@@ -13,7 +13,12 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Plain instance, no interceptors — customer calls attach their own
 // token per-request via authHeader() below, not a global Bearer header.
-const customerApi = axios.create({ baseURL: BASE_URL });
+const customerApi = axios.create({ 
+  baseURL: BASE_URL,
+  headers: {
+    "ngrok-skip-browser-warning": "any"
+  }
+});
 
 // Namespaced keys so this never collides with the owner's localStorage entries.
 const TOKEN_KEY = "lp_customer_access_token";

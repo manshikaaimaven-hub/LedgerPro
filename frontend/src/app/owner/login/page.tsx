@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { IconReceipt2, IconEye, IconEyeOff, IconLoader2 } from "@tabler/icons-react";
 import api from "@/lib/api";
 import { saveSession } from "@/lib/auth";
@@ -47,7 +48,7 @@ export default function LoginPage() {
     // Gradient page background + soft glow blobs = the "attractive, not
     // plain white" look. relative + overflow-hidden lets the blurred
     // circles sit behind the card without spilling outside the phone frame.
-    <div className="relative flex-1 flex flex-col justify-center px-6 py-10 overflow-hidden bg-gradient-to-b from-indigo-50 via-page to-page">
+    <div className="relative flex-1 flex flex-col justify-center px-6 py-10 overflow-hidden bg-gradient-to-b from-indigo-55 via-page to-page">
       {/* decorative glow blobs — purely visual, no content */}
       <div className="pointer-events-none absolute -top-24 -right-20 w-64 h-64 rounded-full bg-brand/40 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-28 -left-16 w-64 h-64 rounded-full bg-indigo-300/40 blur-3xl" />
@@ -124,19 +125,19 @@ export default function LoginPage() {
 
         <div className="text-center text-[13px] text-text-tertiary mt-6 leading-relaxed">
           Don&apos;t have an account?{" "}
-          <a href="/owner/signup/" className="text-brand font-medium hover:text-brand-dark">
+          <Link href="/owner/signup/" className="text-brand font-medium hover:text-brand-dark">
             Sign up
-          </a>
+          </Link>
           <br />
-          <a href="/forgot-password/" className="text-brand hover:text-brand-dark">
+          <Link href="/forgot-password/" className="text-brand hover:text-brand-dark">
             Forgot password?
-          </a>
+          </Link>
           <br />
           <span className="mt-1 inline-block">
             Checking your own balance?{" "}
-            <a href="/customer/customer-login/" className="text-brand font-medium hover:text-brand-dark">
+            <Link href="/customer/customer-login/" className="text-brand font-medium hover:text-brand-dark">
               Customer login
-            </a>
+            </Link>
           </span>
         </div>
       </div>

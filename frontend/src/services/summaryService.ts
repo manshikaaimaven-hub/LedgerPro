@@ -1,13 +1,3 @@
-/*
-summaryService.ts is the data provider for the Summary page. 
-It gathers information from five different backend endpoints—
-overall financial summary, total customers, today's entries, top receivables, and top debts. 
-By using Promise.all(), it requests all of them at the same time, 
-making the dashboard load much faster than if it waited for each request one by one.
-Finally, it combines the responses into a single, frontend-friendly object (using camelCase property names) 
-that the SummaryPage can use directly. 
-This keeps the Summary page simple and separates the API communication logic into one reusable service.
-*/
 import api from "@/lib/api";
 import type {
   DashboardSummary,
@@ -17,17 +7,31 @@ import type {
   SummaryPageData,
 } from "@/types/summary";
 
+const EMPTY_SUMMARY: DashboardSummary = {
+  total_credit: 0,
+  total_debit: 0,
+  net_outstanding: 0,
+  net_label: "receivable",
+};
+
+function unwrap<T>(
+  result: PromiseSettledResult<{ data: T }>,
+  fallback: T
+): T {
+  return result.status === "fulfilled" ? result.value.data : fallback;
+}
+
 /**
  * Fetches everything the Summary page needs in one go.
  *
- * Why Promise.all instead of 5 awaited calls in sequence:
- * these 5 endpoints don't depend on each other, so firing them
- * together means the page's total load time is roughly the SLOWEST
- * single call, not the SUM of all five.
+ * Uses Promise.allSettled instead of Promise.all so that a single
+ * failing endpoint (e.g. a transient error right after signup, or
+ * one slow cold-start call) doesn't take down the whole page. Each
+ * card falls back to its zero/empty state independently.
  */
 export async function fetchSummaryPageData(): Promise<SummaryPageData> {
   const [summaryRes, countRes, todayRes, receivablesRes, debtsRes] =
-    await Promise.all([
+    await Promise.allSettled([
       api.get<DashboardSummary>("/summary"),
       api.get<CustomersCountResponse>("/summary/customers-count"),
       api.get<EntriesTodayResponse>("/summary/entries-today"),
@@ -35,14 +39,16 @@ export async function fetchSummaryPageData(): Promise<SummaryPageData> {
       api.get<TopBalanceEntry[]>("/summary/top-debts"),
     ]);
 
+  const summary = unwrap(summaryRes, EMPTY_SUMMARY);
+
   return {
-    totalCredit: summaryRes.data.total_credit,
-    totalDebit: summaryRes.data.total_debit,
-    netOutstanding: summaryRes.data.net_outstanding,
-    netLabel: summaryRes.data.net_label,
-    totalCustomers: countRes.data.total_customers,
-    entriesToday: todayRes.data.entries_today,
-    topReceivables: receivablesRes.data,
-    topDebts: debtsRes.data,
+    totalCredit: summary.total_credit,
+    totalDebit: summary.total_debit,
+    netOutstanding: summary.net_outstanding,
+    netLabel: summary.net_label,
+    totalCustomers: unwrap(countRes, { total_customers: 0 }).total_customers,
+    entriesToday: unwrap(todayRes, { entries_today: 0 }).entries_today,
+    topReceivables: unwrap(receivablesRes, [] as TopBalanceEntry[]),
+    topDebts: unwrap(debtsRes, [] as TopBalanceEntry[]),
   };
 }

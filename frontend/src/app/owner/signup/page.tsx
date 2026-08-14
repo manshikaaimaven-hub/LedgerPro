@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { IconBuildingFactory2, IconEye, IconEyeOff, IconLoader2 } from "@tabler/icons-react";
 import api from "@/lib/api";
 import { saveSession } from "@/lib/auth";
@@ -126,9 +127,9 @@ export default function SignupPage() {
             scrollable area instead of touching the very bottom edge */}
         <div className="text-center text-[13px] text-text-tertiary mt-6 mb-4">
           Already have an account?{" "}
-          <a href="/owner/login/" className="text-brand font-medium hover:text-brand-dark">
+          <Link href="/owner/login/" className="text-brand font-medium hover:text-brand-dark">
             Sign in
-          </a>
+          </Link>
         </div>
       </div>
     </div>

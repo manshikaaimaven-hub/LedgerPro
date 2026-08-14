@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import CustomerProtectedRoute from "@/components/customer-shell/CustomerProtectedRoute";
 import { CustomerShell } from "@/components/customer-shell/CustomerShell";
 import api from "@/lib/api";
@@ -190,7 +191,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
           <label className="mb-1.5 block text-xs font-medium text-text-secondary">Confirm new password</label>
           <input className="field-input" type="password" value={conf} onChange={e => setConf(e.target.value)} />
         </div>
-        <a href="/forgot-password" className="mb-3 mt-1 inline-block text-xs text-info">Forgot your current password?</a>
+        <Link href="/forgot-password" className="mb-3 mt-1 inline-block text-xs text-info">Forgot your current password?</Link>
         {err && <p className="mb-2 text-sm text-danger">{err}</p>}
         <div className="mt-2 flex gap-2.5">
           <button onClick={onClose} className="flex-1 rounded-input border border-line py-3 text-sm text-text-primary">Cancel</button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { IconMailFast, IconLoader2, IconCircleCheck } from "@tabler/icons-react";
 import api from "@/lib/api";
 
@@ -79,9 +80,9 @@ export default function ForgotPasswordPage() {
         )}
 
         <div className="text-center text-[13px] text-text-tertiary mt-6">
-          <a href="/login/" className="text-brand font-medium hover:text-brand-dark">
+          <Link href="/owner/login/" className="text-brand font-medium hover:text-brand-dark">
             ← Back to sign in
-          </a>
+          </Link>
         </div>
       </div>
     </div>
