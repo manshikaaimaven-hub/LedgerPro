@@ -132,6 +132,7 @@ origins = [
     "http://localhost:3000",   # Next.js
     "http://127.0.0.1:3000",
     "https://caretaker-shivering-dealt.ngrok-free.dev",
+    "https://ledgerpro-production-283b.up.railway.app",
     "http://localhost",
     "capacitor://localhost",
 ]

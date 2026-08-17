@@ -121,7 +121,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_EMAIL: str
     SMTP_APP_PASSWORD: str
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str
 
     BREVO_API_KEY: str
     BREVO_FROM_EMAIL: str
