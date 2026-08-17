@@ -17,9 +17,25 @@ delivered.
 # Import
 # ───────────────────────────────────────────────────────────────
 import smtplib
+import socket
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app.config import settings
+
+
+# ───────────────────────────────────────────────────────────────
+# Railway's network often resolves SMTP hosts to an IPv6 address it
+# has no outbound route for, causing "Network is unreachable" even
+# though IPv4 works fine. This subclass forces the SMTP connection
+# to use an IPv4 address specifically, without touching global
+# socket behavior anywhere else in the app.
+# ───────────────────────────────────────────────────────────────
+class IPv4SMTP(smtplib.SMTP):
+    def _get_socket(self, host, port, timeout):
+        # Resolve host to an IPv4 address explicitly
+        addr_info = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        ipv4_host = addr_info[0][4][0]  # first IPv4 address found
+        return super()._get_socket(ipv4_host, port, timeout)
 
 # ───────────────────────────────────────────────────────────────
 # Sends a single email via SMTP. 
@@ -64,22 +80,29 @@ def send_email(to_email: str, subject: str, html_body: str) -> None:
     # Step 3: Attach the HTML body to the email.
     msg.attach(MIMEText(html_body, "html"))
 
+    # try:
+    #     # Step 4: Connect to the SMTP server.
+    #     with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+
+    #         # Step 5: Upgrade the connection to a secure TLS session.
+    #         server.starttls()
+
+    #         # Step 6: Authenticate using the configured email credentials.
+    #         server.login(settings.SMTP_EMAIL, settings.SMTP_APP_PASSWORD)
+
+    #         # Step 7: Send the email to the recipient.
+    #         server.sendmail(
+    #             settings.SMTP_EMAIL,
+    #             [to_email],
+    #             msg.as_string()
+    #         )
+
     try:
-        # Step 4: Connect to the SMTP server.
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-
-            # Step 5: Upgrade the connection to a secure TLS session.
+        with IPv4SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
             server.starttls()
-
-            # Step 6: Authenticate using the configured email credentials.
             server.login(settings.SMTP_EMAIL, settings.SMTP_APP_PASSWORD)
-
-            # Step 7: Send the email to the recipient.
-            server.sendmail(
-                settings.SMTP_EMAIL,
-                [to_email],
-                msg.as_string()
-            )
+            server.sendmail(settings.SMTP_EMAIL, [to_email], msg.as_string())
+            print("Email sent")
 
     except Exception as e:
         # Step 8: Log the error without interrupting the application.
