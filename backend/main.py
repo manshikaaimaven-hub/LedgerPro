@@ -2,7 +2,11 @@
 # Import
 # ───────────────────────────────────────────────────────────────
 import uvicorn
+import os
+from pathlib import Path
+
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -144,7 +148,7 @@ app.add_middleware(
 #
 # Used to verify that the API is running.
 # ---------------------------------------------------------
-@app.get("/")
+@app.get("/api/health")
 def health_check():
     """
     Health check endpoint.
@@ -160,6 +164,23 @@ def health_check():
 
 
 # ---------------------------------------------------------
+# Serve Next.js frontend
+# ---------------------------------------------------------
+
+frontend_path = Path(__file__).resolve().parent.parent / "frontend" / "out"
+
+if frontend_path.exists():
+    app.mount(
+        "/",
+        StaticFiles(
+            directory=frontend_path,
+            html=True
+        ),
+        name="frontend"
+    )
+
+
+# ---------------------------------------------------------
 # Start the FastAPI application using Uvicorn.
 #
 # Host:
@@ -172,9 +193,12 @@ def health_check():
 #   Automatically restart the server when code changes.
 # ---------------------------------------------------------
 if __name__ == "__main__":
+
+    port = int(os.environ.get("PORT", 8000))
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True
+        port=port,
+        reload=False
     )
