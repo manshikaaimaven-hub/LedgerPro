@@ -19,6 +19,7 @@ dist/
 *.tsbuildinfo
 next-env.d.ts
 
+
 # Backend / Python Build
 __pycache__/
 *.pyc
