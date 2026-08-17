@@ -123,6 +123,10 @@ class Settings(BaseSettings):
     SMTP_APP_PASSWORD: str
     FRONTEND_URL: str = "http://localhost:3000"
 
+    BREVO_API_KEY: str
+    BREVO_FROM_EMAIL: str
+    BREVO_FROM_NAME: str = "LedgerPro"
+
     class Config:
         """Load environment variables from the .env file."""
         env_file = ".env"
