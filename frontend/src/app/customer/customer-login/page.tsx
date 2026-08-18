@@ -14,6 +14,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { IconLock, IconUserCircle, IconEye, IconEyeOff, IconReceipt2 } from "@tabler/icons-react";
 import { customerLogin, linkInvite, saveCustomerSession } from "@/services/customerAuthService";
 import { getMyBusinesses } from "@/services/customerAuthService";
@@ -176,9 +177,17 @@ function CustomerLoginContent() {
           </button>
         </form>
 
-        <p className="text-xs text-text-tertiary text-center mt-6 leading-relaxed">
-          Don&apos;t have an account yet? Ask the business you trade with to send you an invite link.
-        </p>
+        <div className="text-center text-[13px] text-text-tertiary mt-6 leading-relaxed">
+          <p className="text-xs text-text-tertiary mb-3 leading-relaxed">
+            Don&apos;t have an account yet? Ask the business you trade with to send you an invite link.
+          </p>
+          <span className="inline-block border-t border-line/60 pt-3 w-full">
+            Are you a business owner?{" "}
+            <Link href="/owner/login/" className="text-brand font-medium hover:text-brand-dark">
+              Owner login
+            </Link>
+          </span>
+        </div>
       </div>
     </PageShell>
   );
