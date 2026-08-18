@@ -85,7 +85,7 @@ def generate_customer_invite(
         raise HTTPException(400, "This customer is already linked to your account")
 
     token = create_customer_invite_token(owner_id, customer_id)
-    invite_link = f"{FRONTEND_BASE_URL}/customer-signup?token={token}"
+    invite_link = f"{FRONTEND_BASE_URL}/customer/customer-signup?token={token}"
     business_name = _get_business_name(owner_id, parent_db)
 
     background_tasks.add_task(
