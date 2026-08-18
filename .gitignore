@@ -13,7 +13,6 @@ coverage/
 
 # Next.js / Frontend Build
 .next/
-out/
 build/
 dist/
 *.tsbuildinfo
@@ -57,3 +56,4 @@ coverage.xml
 
 # Project specific
 frontend/frontend.zip
+frontend/out/
