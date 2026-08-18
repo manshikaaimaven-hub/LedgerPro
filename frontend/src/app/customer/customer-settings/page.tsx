@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import CustomerProtectedRoute from "@/components/customer-shell/CustomerProtectedRoute";
 import { CustomerShell } from "@/components/customer-shell/CustomerShell";
-import api from "@/lib/api";
 import { initials } from "@/lib/format";
 import { getMyBusinesses, clearCustomerSession } from "@/services/customerAuthService";
+import { changeMyPassword } from "@/services/customerDashboardService";
+import { getCurrentBusiness } from "@/lib/currentBusiness";
 
 interface LinkedBusiness {
   owner_id: string;
@@ -95,7 +96,12 @@ export default function SettingsPage() {
         </div>
       </CustomerShell>
 
-      {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
+      {pwOpen && (
+        <ChangePasswordModal
+          ownerId={getCurrentBusiness()?.ownerId || businesses[0]?.owner_id}
+          onClose={() => setPwOpen(false)}
+        />
+      )}
     </CustomerProtectedRoute>
   );
 }
@@ -151,7 +157,7 @@ function SettingsRow({ icon, tone, title, sub, onClick, last }: { icon: string; 
   );
 }
 
-function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+function ChangePasswordModal({ ownerId, onClose }: { ownerId?: string; onClose: () => void }) {
   const [cur, setCur] = useState('');
   const [next, setNext] = useState('');
   const [conf, setConf] = useState('');
@@ -164,7 +170,8 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
     if (next !== conf) return setErr('Passwords do not match.');
     setSaving(true);
     try {
-      await api.post('/auth/change-password', { current_password: cur, new_password: next });
+      const targetOwnerId = ownerId || getCurrentBusiness()?.ownerId || 'default';
+      await changeMyPassword(targetOwnerId, cur, next);
       onClose();
     } catch (e: any) {
       setErr(e?.response?.data?.detail || 'Current password is incorrect.');
