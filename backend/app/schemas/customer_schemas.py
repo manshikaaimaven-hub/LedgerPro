@@ -41,7 +41,6 @@ class CustomerCreate(BaseModel):
     """
 
     name: str
-    email: str
     phone: str
     address: Optional[str] = None
     gst_number: Optional[str] = None
@@ -68,7 +67,6 @@ class CustomerUpdate(BaseModel):
     """
 
     name: Optional[str] = None
-    email: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
     gst_number: Optional[str] = None
@@ -99,7 +97,6 @@ class CustomerResponse(BaseModel):
 
     id: str
     name: str
-    email: str
     phone: str
     address: Optional[str]
     gst_number: Optional[str]
@@ -114,34 +111,3 @@ class CustomerResponse(BaseModel):
         """
 
         from_attributes = True
-
-
-# ───────────────────────────────────────────────────────────────
-# Logout Request Schema
-# ───────────────────────────────────────────────────────────────
-class LogoutRequest(BaseModel):
-    """
-    Request schema used for customer logout.
-
-    Attributes:
-        refresh_token: Customer's refresh token to be revoked.
-    """
-
-    refresh_token: str
-
-
-# ───────────────────────────────────────────────────────────────
-# Invite Response Schema
-# ───────────────────────────────────────────────────────────────
-class InviteResponse(BaseModel):
-    """
-    Response schema returned after generating a customer
-    invitation link.
-
-    Attributes:
-        invite_link: Secure invitation URL.
-        message: Success message describing the result.
-    """
-
-    invite_link: str
-    message: str

@@ -24,13 +24,10 @@ from app.models import child_models, parent_models
 
 # Import API routers
 from app.routers.auth import router as auth
-from app.routers.customers import router as customers
+from app.routers.create_customers import router as customers
 from app.routers.transactions import router as transactions
 from app.routers.summary import router as Summary
-from app.routers.customer_auth import router as Customers_Auth
-from app.routers.customer_dashboard_router import router as Customer_Dashboard 
-from app.routers.owner_restore import router as Owner_Restore
-
+from app.routers.settings import router as Settings
 
 # ---------------------------------------------------------
 # Application Lifespan
@@ -123,9 +120,7 @@ app.include_router(auth)
 app.include_router(customers)
 app.include_router(transactions)
 app.include_router(Summary)
-app.include_router(Customers_Auth)
-app.include_router(Customer_Dashboard)
-app.include_router(Owner_Restore)
+app.include_router(Settings)
 
 
 origins = [

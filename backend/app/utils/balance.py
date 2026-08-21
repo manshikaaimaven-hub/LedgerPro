@@ -48,10 +48,9 @@ def compute_customer_balance(customer_id: str, owner_id: str, db: Session) -> fl
     """
 
     # Step 1: Fetch all active transactions for the customer.
-    txns = db.query(ParentTransaction).filter(
-        ParentTransaction.customer_id == customer_id,
-        ParentTransaction.owner_id == owner_id,
-        ParentTransaction.is_deleted == False
+    txns = db.query(ChildTransaction).filter(
+        ChildTransaction.customer_id == customer_id,
+            ChildTransaction.owner_id == owner_id,
     ).all()
 
     # Step 2: Calculate the total credit amount.

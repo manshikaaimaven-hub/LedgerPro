@@ -91,7 +91,7 @@ export function Topbar({ title, subtitle }: TopbarProps) {
             <button
               onClick={() => {
                 setMenuOpen(false);
-                router.push("/settings");
+                router.push("/owner/settings");
               }}
               className="w-full text-left px-4 py-2.5 text-[14px] text-text-primary hover:bg-black/[0.03] transition-colors"
             >

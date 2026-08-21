@@ -116,16 +116,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     RESET_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # SMTP Email Configuration
-    SMTP_HOST: str
-    SMTP_PORT: int = 587
-    SMTP_EMAIL: str
-    SMTP_APP_PASSWORD: str
     FRONTEND_URL: str
 
-    BREVO_API_KEY: str
-    BREVO_FROM_EMAIL: str
-    BREVO_FROM_NAME: str = "LedgerPro"
 
     class Config:
         """Load environment variables from the .env file."""

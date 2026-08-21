@@ -37,13 +37,17 @@ Features:
 # Import
 # ───────────────────────────────────────────────────────────────
 from fastapi import APIRouter, Depends
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date, datetime, timezone
-# from app.database.child_db import get_child_db
-# from app.models.child_models import ChildCustomer, ChildTransaction
+
+from app.database.child_db import get_child_db
 from app.database.parent_db import get_parent_db
+
 from app.models.parent_models import ParentCustomer, ParentTransaction
+from app.models.child_models import ChildCustomer, ChildTransaction
+
 from app.utils.deps import get_current_owner_id
 from app.utils.balance import compute_customer_balance
 
@@ -59,7 +63,7 @@ router = APIRouter(prefix="/summary", tags=["Summary"])
 @router.get("")
 def get_summary(
     owner_id: str = Depends(get_current_owner_id),
-    parent_db: Session = Depends(get_parent_db)
+    child_db: Session = Depends(get_child_db)
     ):
     """
     Returns the overall financial summary for the logged-in owner.
@@ -74,24 +78,19 @@ def get_summary(
     """
 
     # Step 1: Fetch all non-deleted transactions
-    txns = parent_db.query(ParentTransaction).filter(
-        ParentTransaction.owner_id == owner_id,
-        ParentTransaction.is_deleted == False
+    child_txns = child_db.query(ChildTransaction).filter(
+        ChildTransaction.owner_id == owner_id,
     ).all()
 
-    
-    
-
     # Step 2: Calculate total credits
-    total_cr = sum(float(t.amount) for t in txns if t.type == "cr")
+    total_cr = sum(float(t.amount) for t in child_txns if t.type == "cr")
 
     # Step 3: Calculate total debits
-    total_dr = sum(float(t.amount) for t in txns if t.type == "dr")
+    total_dr = sum(float(t.amount) for t in child_txns if t.type == "dr")
 
     # Step 4: Calculate net outstanding amount
     net = total_cr - total_dr
     
-
     # Step 5 & 6: Return dashboard summary
     return {
         "total_credit": total_cr,
@@ -108,7 +107,7 @@ def get_summary(
 @router.get("/customers-count")
 def customers_count(
     owner_id: str = Depends(get_current_owner_id),
-    parent_db: Session = Depends(get_parent_db)
+    child_db: Session = Depends(get_child_db)
     ):
     """
     Returns the total number of active customers.
@@ -119,9 +118,8 @@ def customers_count(
     """
 
     # Step 1: Count active customers
-    count = parent_db.query(ParentCustomer).filter(
-        ParentCustomer.owner_id == owner_id,
-        ParentCustomer.is_deleted == False
+    count = child_db.query(ChildCustomer).filter(
+        ChildCustomer.owner_id == owner_id,
     ).count()
 
     # Step 2: Return count
@@ -134,7 +132,7 @@ def customers_count(
 @router.get("/entries-today")
 def entries_today(
     owner_id: str = Depends(get_current_owner_id),
-    parent_db: Session = Depends(get_parent_db)
+    child_db: Session = Depends(get_child_db)
     ):
     """
     Returns the number of transactions entered today.
@@ -149,10 +147,9 @@ def entries_today(
     today = date.today()
 
     # Step 2: Count today's transactions
-    count = parent_db.query(ParentTransaction).filter(
-        ParentTransaction.owner_id == owner_id,
-        ParentTransaction.is_deleted == False,
-        func.date(ParentTransaction.entry_date) == today
+    count = child_db.query(ChildTransaction).filter(
+        ChildTransaction.owner_id == owner_id,
+        func.date(ChildTransaction.entry_date) == today
     ).count()
 
     # Step 3: Return count
@@ -166,7 +163,7 @@ def entries_today(
 @router.get("/top-receivables")
 def top_receivables(
     owner_id: str = Depends(get_current_owner_id),
-    parent_db: Session = Depends(get_parent_db)
+    child_db: Session = Depends(get_child_db)
     ):
     """
     Returns the top three customers with the highest receivable balances.
@@ -179,16 +176,15 @@ def top_receivables(
     5. Return the top three customers.
     """
     # Step 1: Fetch active customers
-    customers = parent_db.query(ParentCustomer).filter(
-        ParentCustomer.owner_id == owner_id,
-        ParentCustomer.is_deleted == False
+    customers = child_db.query(ChildCustomer).filter(
+        ChildCustomer.owner_id == owner_id,
     ).all()
 
     result = []
 
     # Step 2 & 3: Calculate balances and keep receivables
     for c in customers:
-        balance = compute_customer_balance(c.id, owner_id, parent_db)
+        balance = compute_customer_balance(c.id, owner_id, child_db)
         if balance > 0:
             result.append({"id": c.id, "name": c.name, "phone": c.phone, "balance": balance})
 
@@ -205,6 +201,7 @@ def top_receivables(
 @router.get("/top-debts")
 def top_debts(
     owner_id: str = Depends(get_current_owner_id),
+    child_db: Session = Depends(get_child_db),
     parent_db: Session = Depends(get_parent_db)
     ):
     """
@@ -219,16 +216,15 @@ def top_debts(
     """
 
     # Step 1: Fetch active customers
-    customers = parent_db.query(ParentCustomer).filter(
-        ParentCustomer.owner_id == owner_id,
-        ParentCustomer.is_deleted == False
+    customers = child_db.query(ChildCustomer).filter(
+        ChildCustomer.owner_id == owner_id,
     ).all()
 
     result = []
     # Step 2 & 3: Calculate balances and keep debts
     for c in customers:
-        balance = compute_customer_balance(c.id, owner_id, parent_db)
-        if balance <= 0:
+        balance = compute_customer_balance(c.id, owner_id, child_db)
+        if balance < 0:
             result.append({"id": c.id, "name": c.name, "phone": c.phone, "balance": balance})
 
     # Step 4: Sort by most negative balance

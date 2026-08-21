@@ -10,9 +10,5 @@ export default function LoginRedirect() {
     router.replace("/owner/login/");
   }, [router]);
 
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <p>Redirecting...</p>
-    </div>
-  );
+  return <div className="min-h-screen" />;
 }

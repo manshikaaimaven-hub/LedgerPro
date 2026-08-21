@@ -42,13 +42,10 @@ class SyncService:
         # Step 2: Update Existing Record
         if existing:
             existing.name = child_customer.name
-            existing.email = child_customer.email
             existing.phone = child_customer.phone
             existing.address = child_customer.address
             existing.gst_number = child_customer.gst_number
             existing.notes = child_customer.notes
-            existing.is_deleted = child_customer.is_deleted
-            existing.deleted_at = child_customer.deleted_at
             existing.updated_at = child_customer.updated_at
         
         # Step 3: Insert New Record
@@ -57,13 +54,10 @@ class SyncService:
                 id=child_customer.id,
                 owner_id=child_customer.owner_id,
                 name=child_customer.name,
-                email=child_customer.email,
                 phone=child_customer.phone,
                 address=child_customer.address,
                 gst_number=child_customer.gst_number,
                 notes=child_customer.notes,
-                is_deleted=child_customer.is_deleted,
-                deleted_at=child_customer.deleted_at,
                 created_at=child_customer.created_at,
                 updated_at=child_customer.updated_at,
             )
@@ -96,7 +90,6 @@ class SyncService:
             existing.invoice_number = child_txn.invoice_number
             existing.entry_date = child_txn.entry_date
 
-            existing.is_deleted = False
             existing.deleted_at = None
             existing.updated_at = child_txn.updated_at
 
@@ -111,8 +104,6 @@ class SyncService:
                 note=child_txn.note,
                 invoice_number=child_txn.invoice_number,
                 entry_date=child_txn.entry_date,
-                is_deleted=False,
-                deleted_at=None,
                 created_at=child_txn.created_at,
                 updated_at=child_txn.updated_at,
             )

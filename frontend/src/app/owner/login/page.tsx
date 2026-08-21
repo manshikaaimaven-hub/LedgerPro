@@ -129,16 +129,11 @@ export default function LoginPage() {
             Sign up
           </Link>
           <br />
+          Forgot Passoword?{" "} 
           <Link href="/forgot-password/" className="text-brand hover:text-brand-dark">
             Forgot password?
           </Link>
           <br />
-          <span className="mt-1 inline-block">
-            Checking your own balance?{" "}
-            <Link href="/customer/customer-login/" className="text-brand font-medium hover:text-brand-dark">
-              Customer login
-            </Link>
-          </span>
         </div>
       </div>
     </div>

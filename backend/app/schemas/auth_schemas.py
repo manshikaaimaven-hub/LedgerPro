@@ -22,8 +22,8 @@ Schemas:
 # Import
 # ───────────────────────────────────────────────────────────────
 from typing import Optional
-
-from pydantic import BaseModel, EmailStr
+import re
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 # ───────────────────────────────────────────────────────────────
@@ -44,13 +44,20 @@ class SignupRequest(BaseModel):
     """
 
     username: str
-    email: EmailStr
     password: str
+    email: str
+    phone: str
     full_name: str
     business_name: str
-    phone: Optional[str] = None
-    city: Optional[str] = None
+    city: str | None = None
 
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        v = v.strip()
+        if not re.fullmatch(r"\d{10}", v):
+            raise ValueError("Phone number must be exactly 10 digits")
+        return v
 
 # ───────────────────────────────────────────────────────────────
 # Owner Login Request Schema

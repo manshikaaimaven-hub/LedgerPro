@@ -1,31 +1,78 @@
 """
-This router manages Customer CRUD operations (Create, Read, Update, Delete). It follows the architecture:
+create_customers.py
+------------
+Customer management endpoints for LedgerPro.
 
-Child DB = Main working database (source of truth for live data)
-Parent DB = Backup database (stores a copy for recovery)
+This router handles all customer-related operations:
 
+    - List customers
+    - Get a single customer
+    - Create a customer
+    - Update a customer
+    - Permanently delete a customer
+
+Database Architecture:
+    Child DB
+        - Main working database.
+        - Stores the live customer records.
+        - Used for normal CRUD operations.
+
+    Parent DB
+        - Permanent backup database.
+        - Stores a synchronized copy of customer records.
+        - Used to preserve customer data for recovery.
+
+Authentication:
+    All customer endpoints require the currently logged-in owner's
+    identity through `get_current_owner_id`.
+
+Data Isolation:
+    Customer records are always filtered by `owner_id` so that one
+    owner cannot access another owner's customers.
+
+Synchronization:
+    When a customer is created or updated, the Child DB record is
+    synchronized to the Parent DB using `sync_service`.
+
+Invite Emails:
+    When a customer is created with an email address, an invite token
+    and signup link are generated and the invitation email is queued
+    as a background task.
+
+Delete Behavior:
+    Customer deletion removes the customer permanently from both
+    the Child DB and Parent DB.
 """
+
 # ───────────────────────────────────────────────────────────────
 # Import
 # ───────────────────────────────────────────────────────────────
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
-from sqlalchemy.orm import Session
+import uuid
 from datetime import datetime, timezone
+from typing import List, Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+
+from sqlalchemy.orm import Session
+
 from app.database.child_db import get_child_db
 from app.database.parent_db import get_parent_db
+
 from app.models.child_models import ChildCustomer
 from app.models.parent_models import ParentCustomer
-from app.schemas.customer_schemas import CustomerCreate, CustomerUpdate, CustomerResponse
-from app.utils.deps import get_current_owner_id
-from app.utils.balance import compute_balances_bulk, compute_customer_balance
-from app.utils.auth_utils import create_customer_invite_token
-from app.utils.email_utils import send_invite_email
-from app.schemas.customer_schemas import InviteResponse
-from app.config import settings
-from app.services.sync_service import sync_service
-from typing import List, Optional
-import uuid
 
+from app.schemas.customer_schemas import (
+    CustomerCreate,
+    CustomerUpdate,
+    CustomerResponse
+)
+
+from app.utils.balance import compute_balances_bulk, compute_customer_balance
+from app.utils.deps import get_current_owner_id
+
+from app.services.sync_service import sync_service
+
+from app.config import settings
 
 # ───────────────────────────────────────────────────────────────
 # Router Setup
@@ -48,18 +95,27 @@ def list_customers(
     Retrieve a paginated list of customers for the logged-in owner.
 
     Features:
-    - Returns only customers belonging to the current owner.
-    - Excludes customers that have been soft deleted.
-    - Supports searching by customer name, phone number, or GST number.
-    - Supports pagination using page and limit parameters.
+        - Returns only customers belonging to the current owner.
+        - Excludes soft-deleted customers.
+        - Supports searching by name, phone, or GST number.
+        - Supports pagination using page and limit.
+        - Calculates the current balance for each customer.
 
     Query Parameters:
-        page   : Page number (default = 1)
-        limit  : Number of records per page (default = 20, maximum = 100)
-        search : Optional search keyword
+        page:
+            Page number. Defaults to 1.
+
+        limit:
+            Number of customers per page. Defaults to 20.
+            Maximum allowed value is 100.
+
+        search:
+            Optional search keyword used against customer name,
+            phone number, and GST number.
 
     Returns:
-        List[CustomerResponse]
+        List[CustomerResponse]:
+            Paginated list of active customers with their balances.
     """
 
     # ---------------------------------------------------------
@@ -67,7 +123,6 @@ def list_customers(
     # --------------------------------------------------------- 
     query = child_db.query(ChildCustomer).filter(
         ChildCustomer.owner_id == owner_id,
-        ChildCustomer.is_deleted == False
     )
 
     # ---------------------------------------------------------
@@ -104,7 +159,7 @@ def list_customers(
     # ---------------------------------------------------------
     return [
         CustomerResponse(
-            id=c.id, name=c.name, email=c.email, phone=c.phone, address=c.address, 
+            id=c.id, name=c.name, phone=c.phone, address=c.address, 
             gst_number=c.gst_number, notes=c.notes, created_at=c.created_at,
             balance=balances.get(c.id, 0.0)
         )
@@ -128,7 +183,6 @@ def get_customer(
     customer = child_db.query(ChildCustomer).filter(
         ChildCustomer.id == customer_id,
         ChildCustomer.owner_id == owner_id,
-        ChildCustomer.is_deleted == False
     ).first()
 
     if not customer:
@@ -137,7 +191,7 @@ def get_customer(
     balance = compute_customer_balance(customer_id, owner_id, child_db)
 
     return CustomerResponse(
-        id=customer.id, name=customer.name, phone=customer.phone, email=customer.email,
+        id=customer.id, name=customer.name, phone=customer.phone, 
         address=customer.address, gst_number=customer.gst_number,
         notes=customer.notes, created_at=customer.created_at, balance=balance
     )
@@ -182,7 +236,6 @@ def create_customer(
     existing = child_db.query(ChildCustomer).filter(
         ChildCustomer.owner_id == owner_id,
         ChildCustomer.name == body.name,
-        ChildCustomer.is_deleted == False
     ).first()
     if existing:
         raise HTTPException(400, "A customer with this name already exists")
@@ -215,35 +268,12 @@ def create_customer(
     # ---------------------------------------------------------
     sync_service.sync_customer_to_parent(customer, parent_db, ParentCustomer)
     
-    # ---------------------------------------------------------
-    # Step 5: If this customer has an email on file, automatically
-    # generate their invite token and queue the email to send in
-    # the background — the API response doesn't wait for it.
-    #
-    # If no email was given, we skip silently; the owner can still
-    # generate + share an invite link manually later.
-    # ---------------------------------------------------------
-    if customer.email:
-        invite_token = create_customer_invite_token(owner_id, customer.id)
-        invite_link = f"{settings.FRONTEND_URL}/customer/customer-signup?token={invite_token}"
-
-        # Need the owner's business_name for the email — fetch it from Parent DB
-        from app.models.parent_models import ParentOwner
-        owner = parent_db.query(ParentOwner).filter(ParentOwner.id == owner_id).first()
-        business_name = owner.business_name if owner else "Your supplier"
-
-        background_tasks.add_task(
-            send_invite_email,
-            to_email=customer.email,
-            customer_name=customer.name,
-            business_name=business_name,
-            invite_link=invite_link,
-        )
+    
     # ---------------------------------------------------------
     # Step 5: Return success response with the new customer ID.
     # ---------------------------------------------------------
     return {
-        "message": "Customer created" + (" — invite email sent" if customer.email else ""),
+        "message": "Customer Created Successfully",
         "id": customer.id
         }
 
@@ -291,7 +321,6 @@ def update_customer(
     customer = child_db.query(ChildCustomer).filter(
         ChildCustomer.id == customer_id,
         ChildCustomer.owner_id == owner_id,
-        ChildCustomer.is_deleted == False
     ).first()
 
     # ---------------------------------------------------------

@@ -2,6 +2,7 @@
 child_db.py
 -----------
 Sets up the SQLAlchemy engine and session for the CHILD database.
+
 The child DB holds all business data:
   - Customers
   - Transactions
@@ -12,13 +13,24 @@ Same pattern as parent_db.py — two separate engines, two separate session
 factories. Routes that need to touch both DBs will take both as dependencies.
 """
 
+# ───────────────────────────────────────────────────────────────
+# Import
+# ───────────────────────────────────────────────────────────────
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
+
 from app.config import settings
 
+
+# ───────────────────────────────────────────────────────────────
+# Child Database Base
+# ───────────────────────────────────────────────────────────────
 class ChildBase(DeclarativeBase):
     pass
 
+# ───────────────────────────────────────────────────────────────
+# Child Database Connection URL
+# ───────────────────────────────────────────────────────────────
 CHILD_DB_URL = (
     f"postgresql+psycopg2://"
     f"{settings.DB_USER}:"
@@ -28,11 +40,19 @@ CHILD_DB_URL = (
     f"{settings.CHILD_DB_NAME}"
 )
 
+# ───────────────────────────────────────────────────────────────
+# Child Database Engine
+# ───────────────────────────────────────────────────────────────
 engine = create_engine(CHILD_DB_URL, echo=False)
 
+# ───────────────────────────────────────────────────────────────
+# Child Database Session Factory
+# ───────────────────────────────────────────────────────────────
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
+# ───────────────────────────────────────────────────────────────
+# Child Database Session Dependency
+# ───────────────────────────────────────────────────────────────
 def get_child_db() -> Session:
     """
     FastAPI dependency for the child database session.
@@ -44,7 +64,9 @@ def get_child_db() -> Session:
     finally:
         db.close()
 
-
+# ───────────────────────────────────────────────────────────────
+# Child Database Connection Test
+# ───────────────────────────────────────────────────────────────
 def test_child_db_connection():
     """
     Called on app startup to verify child DB connectivity.

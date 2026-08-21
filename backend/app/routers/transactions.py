@@ -29,7 +29,7 @@ Features:
 # ───────────────────────────────────────────────────────────────
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from app.database.child_db import get_child_db
 from app.database.parent_db import get_parent_db
 from app.models.child_models import ChildCustomer, ChildTransaction
@@ -39,6 +39,8 @@ from app.utils.deps import get_current_owner_id
 from app.services.sync_service import sync_service
 from typing import List
 import uuid
+
+IST = timezone(timedelta(hours=5, minutes=30))
 
 # ───────────────────────────────────────────────────────────────
 # Router Setup
@@ -72,7 +74,6 @@ def create_transaction(
     customer = child_db.query(ChildCustomer).filter(
         ChildCustomer.id == body.customer_id,
         ChildCustomer.owner_id == owner_id,
-        ChildCustomer.is_deleted == False
     ).first()
 
     # Step 2: If not exists raise 404 
@@ -80,7 +81,27 @@ def create_transaction(
         raise HTTPException(404, "Customer not found")
 
     # Step 3: Use the provided entry date or the current UTC time.
-    entry_date = body.entry_date or datetime.now(timezone.utc)
+    now_ist = datetime.now(IST)
+
+    if body.entry_date is None:
+        entry_date = now_ist
+    else:
+        supplied = body.entry_date
+        # Normalize to aware datetime for comparison
+        if supplied.tzinfo is None:
+            supplied = supplied.replace(tzinfo=IST)
+
+        if supplied.time() == datetime.min.time():
+            # Date-only value — keep the supplied date, use current time
+            entry_date = supplied.replace(
+                hour=now_ist.hour,
+                minute=now_ist.minute,
+                second=now_ist.second,
+                microsecond=now_ist.microsecond,
+            )
+        else:
+            # A real time was supplied — trust it as-is
+            entry_date = supplied
 
     # Step 4: Create a new transaction object. 
     txn = ChildTransaction(
@@ -147,7 +168,6 @@ def list_transactions(
     all_txns = child_db.query(ChildTransaction).filter(
         ChildTransaction.customer_id == customer_id,
         ChildTransaction.owner_id == owner_id,
-        ChildTransaction.is_deleted == False
     ).order_by(ChildTransaction.entry_date.asc()).all()
 
     # Step 3: Walk through oldest to newest,
@@ -180,59 +200,8 @@ def list_transactions(
             "note": t.note,
             "invoice_number": t.invoice_number,
             "entry_date": t.entry_date,
-            "is_deleted": t.is_deleted,
             "created_at": t.created_at,
             "running_balance": t.running_balance
         }
         for t in paginated
     ]
-
-# ───────────────────────────────────────────────────────────────
-# DELETE /transactions/{txn_id}
-# ───────────────────────────────────────────────────────────────
-@router.delete("/{txn_id}")
-def delete_transaction(
-    txn_id: str,
-    owner_id: str = Depends(get_current_owner_id),
-    child_db: Session = Depends(get_child_db),
-    parent_db: Session = Depends(get_parent_db)
-    ):
-    """
-    Soft delete a transaction.
-
-    Workflow:
-    1. Verify that the transaction exists, belongs to the authenticated owner,
-       and has not already been deleted.
-    2. Return a 404 error if the transaction is not found.
-    3. Mark the transaction as deleted by setting the soft delete fields.
-    4. Commit the changes to the child database.
-    5. Return a success response.
-    """
-    # Step 1: Verify the transaction exists, belongs to the logged-in owner,
-    # and has not already been soft deleted.
-    txn = child_db.query(ChildTransaction).filter(
-        ChildTransaction.id == txn_id,
-        ChildTransaction.owner_id == owner_id,
-    ).first()
-
-    # Step 2: Return an error if the transaction does not exist.
-    if not txn:
-        raise HTTPException(404, "Transaction not found")
-
-    # Step 3: Soft delete the transaction by updating the deletion fields.
-    txn.is_deleted = True
-    txn.deleted_at = datetime.now(timezone.utc)
-
-    # Step 4: Save the changes to the database.
-    child_db.commit()
-    child_db.refresh(txn)
-
-    # Step 5: Sync the updated transaction to Parent DB.
-    sync_service.sync_transaction_to_parent(
-        child_txn=txn,
-        parent_db=parent_db,
-        parent_model=ParentTransaction
-    )
-
-     # Step 5: Return a success response.
-    return {"message": "Transaction deleted"}
