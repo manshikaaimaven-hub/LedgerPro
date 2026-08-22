@@ -118,6 +118,8 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str
 
+    BREVO_API_KEY: str
+    BREVO_SENDER_EMAIL: str
 
     class Config:
         """Load environment variables from the .env file."""

@@ -23,8 +23,8 @@ const REFRESH_TOKEN_KEY = "lp_refresh_token";
 const OWNER_KEY = "lp_owner";
 
 /**
- * Called once, right after a successful /auth/login or /auth/signup
- * response. Saves everything the rest of the app needs to identify
+ * Called once, right after a successful /auth/login response.
+ * Saves everything the rest of the app needs to identify
  * and authenticate the user on every subsequent request.
  */
 export function saveSession(accessToken: string, refreshToken: string, owner: Owner) {

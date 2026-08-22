@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { IconLockCheck, IconLoader2 } from "@tabler/icons-react";
+import { IconLockCheck, IconLoader2, IconEye, IconEyeOff } from "@tabler/icons-react";
 import api from "@/lib/api";
 
 function ResetPasswordContent() {
@@ -15,6 +15,8 @@ function ResetPasswordContent() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,29 +90,65 @@ function ResetPasswordContent() {
                 New password
               </label>
 
-              <input
-                className="field-input"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 4 characters"
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <input
+                  className="field-input pr-11"
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  autoComplete="new-password"
+                  required
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
+                  aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                >
+                  {showNewPassword ? (
+                    <IconEyeOff size={19} />
+                  ) : (
+                    <IconEye size={19} />
+                  )}
+                </button>
+                </div>
             </div>
 
             <div>
               <label className="block text-[13px] font-medium text-text-secondary mb-1.5">
-                Confirm new password
+                Confirm password
               </label>
 
-              <input
-                className="field-input"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <input
+                  className="field-input pr-11"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  autoComplete="new-password"
+                  required
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
+                  aria-label={
+                    showConfirmPassword
+                      ? "Hide confirm password"
+                      : "Show confirm password"
+                  }
+                >
+                  {showConfirmPassword ? (
+                    <IconEyeOff size={19} />
+                  ) : (
+                    <IconEye size={19} />
+                  )}
+                </button>
+              </div>
             </div>
 
             {error && (

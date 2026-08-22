@@ -4,8 +4,7 @@
  * WHAT THIS PAGE DOES:
  * New business owner creates their LedgerPro account. Collects
  * username, email, password + business details, sends it all to
- * POST /auth/signup, and logs the user straight in on success
- * (backend returns tokens immediately, same as login).
+ * POST /auth/signup, and redirects the user to the login page on success.
  */
 
 import { useState } from "react";
@@ -13,7 +12,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { IconBuildingFactory2, IconEye, IconEyeOff, IconLoader2 } from "@tabler/icons-react";
 import api from "@/lib/api";
-import { saveSession } from "@/lib/auth";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -56,10 +54,8 @@ export default function SignupPage() {
     setLoading(true);
     try {
       // Backend checks duplicate username AND duplicate email
-      const res = await api.post("/auth/signup", form);
-      const { access_token, refresh_token, owner } = res.data;
-      saveSession(access_token, refresh_token, owner);
-      router.push("/");
+      await api.post("/auth/signup", form);
+      router.push("/owner/login/");
     } catch (err: any) {
       // Backend distinguishes duplicate username vs duplicate email —
       // we just surface whatever message it sends.

@@ -47,6 +47,9 @@ from app.utils.deps import get_current_owner_id
 
 from app.config import settings
 
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+
 # ───────────────────────────────────────────────────────────────
 # Router Setup
 # ───────────────────────────────────────────────────────────────
@@ -257,6 +260,111 @@ def logout(
     # Step 5: Return a success response
     return {"message": "Logged out successfully"}
 
+# ───────────────────────────────────────────────────────────────
+# Send Mail for Password Reset 
+# ───────────────────────────────────────────────────────────────
+def send_password_reset_email(
+    email: str,
+    full_name: str,
+    reset_link: str
+):
+    """
+    Send password reset email using Brevo API.
+    """
+
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key["api-key"] = settings.BREVO_API_KEY
+
+    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+        sib_api_v3_sdk.ApiClient(configuration)
+    )
+
+    subject = "Reset Your LedgerPro Password"
+
+    html_content = f"""
+    <html>
+        <body>
+            <h2>Password Reset Request</h2>
+
+            <p>Hello {full_name},</p>
+
+            <p>
+                We received a request to reset your LedgerPro password.
+            </p>
+
+            <p>
+                Click the button below to reset your password:
+            </p>
+
+            <p>
+                <a href="{reset_link}"
+                   style="
+                       display:inline-block;
+                       padding:12px 20px;
+                       background-color:#2563eb;
+                       color:#ffffff;
+                       text-decoration:none;
+                       border-radius:6px;
+                   ">
+                    Reset Password
+                </a>
+            </p>
+
+            <p>
+                Or copy and paste this link into your browser:
+            </p>
+
+            <p>{reset_link}</p>
+
+            <p>
+                If you did not request a password reset,
+                you can safely ignore this email.
+            </p>
+
+            <p>
+                Regards,<br>
+                LedgerPro Team
+            </p>
+        </body>
+    </html>
+    """
+
+    sender = sib_api_v3_sdk.SendSmtpEmailSender(
+        name="LedgerPro",
+        email=settings.BREVO_SENDER_EMAIL
+    )
+
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        sender=sender,
+        to=[
+            sib_api_v3_sdk.SendSmtpEmailTo(
+                email=email,
+                name=full_name
+            )
+        ],
+        subject=subject,
+        html_content=html_content
+    )
+
+    try:
+        response = api_instance.send_transac_email(send_smtp_email)
+
+        print(
+            f"[PASSWORD RESET] Email sent to {email}. "
+            f"Message ID: {response.message_id}"
+        )
+
+    except ApiException as e:
+        print(
+            f"[PASSWORD RESET] Brevo error for {email}: {e}"
+        )
+
+    except Exception as e:
+        print(
+            f"[PASSWORD RESET] Failed to send email to {email}: {e}"
+        )
+
+        
 # ───────────────────────────────────────────────────────────────
 # Forgot Password Endpoint
 # POST - /auth/forgot-password
