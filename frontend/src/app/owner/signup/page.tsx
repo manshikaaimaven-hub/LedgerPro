@@ -1,12 +1,5 @@
 "use client";
 
-/**
- * WHAT THIS PAGE DOES:
- * New business owner creates their LedgerPro account. Collects
- * username, email, password + business details, sends it all to
- * POST /auth/signup, and redirects the user to the login page on success.
- */
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -16,8 +9,6 @@ import api from "@/lib/api";
 export default function SignupPage() {
   const router = useRouter();
 
-  // One state object instead of 7 separate useState calls — easier to
-  // reset, easier to spread straight into the request body.
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -28,21 +19,39 @@ export default function SignupPage() {
     city: "",
   });
   const [error, setError] = useState("");
+  // NEW: per-field errors, keyed by field name
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Generic change handler — works for every field via its `name` attribute
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
+    // Clear that field's error as soon as the user edits it again
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[e.target.name];
+        return next;
+      });
+    }
+  }
+
+  // Client-side check so we don't even hit the network for an obvious typo
+  function validatePhone(phone: string): string | null {
+    if (!phone.trim()) return "Phone number is required";
+    if (!/^\d{10}$/.test(phone.trim())) {
+      return "Phone number must be exactly 10 digits";
+    }
+    return null;
   }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
 
-    // Basic required-field check before hitting the network at all
     const required: (keyof typeof form)[] = [
-      "username", "email", "password", "full_name", "business_name",
+      "username", "email", "password", "full_name", "business_name", "phone",
     ];
     for (const field of required) {
       if (!form[field].trim()) {
@@ -51,23 +60,41 @@ export default function SignupPage() {
       }
     }
 
+    // NEW: client-side phone check before hitting the backend
+    const phoneError = validatePhone(form.phone);
+    if (phoneError) {
+      setFieldErrors({ phone: phoneError });
+      return;
+    }
+
     setLoading(true);
     try {
-      // Backend checks duplicate username AND duplicate email
       await api.post("/auth/signup", form);
       router.push("/owner/login/");
     } catch (err: any) {
-      // Backend distinguishes duplicate username vs duplicate email —
-      // we just surface whatever message it sends.
-      setError(err.response?.data?.detail || "Signup failed. Please try again.");
+      const detail = err.response?.data?.detail;
+
+      // NEW: FastAPI 422 errors come back as an array of {loc, msg}
+      if (Array.isArray(detail)) {
+        const newFieldErrors: Record<string, string> = {};
+        for (const d of detail) {
+          const field = d.loc?.[d.loc.length - 1];
+          if (field) {
+            // Strip pydantic's "Value error, " prefix for a cleaner message
+            newFieldErrors[field] = d.msg.replace(/^Value error,\s*/, "");
+          }
+        }
+        setFieldErrors(newFieldErrors);
+      } else {
+        // Plain string detail (e.g. "Username already taken")
+        setError(detail || "Signup failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   }
 
   return (
-      // Same gradient + glow-blob background as login/forgot/reset, so the
-      // whole auth flow feels like one connected product, not separate pages.
       <div className="relative flex-1 flex flex-col overflow-y-auto overflow-x-hidden px-6 py-10 bg-gradient-to-b from-brand-light via-page to-page">
       <div className="pointer-events-none absolute -top-24 -left-20 w-64 h-64 rounded-full bg-brand/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-28 -right-16 w-64 h-64 rounded-full bg-indigo-300/20 blur-3xl" />
@@ -102,7 +129,14 @@ export default function SignupPage() {
           />
           <Field label="Full name *" name="full_name" value={form.full_name} onChange={handleChange} />
           <Field label="Business name *" name="business_name" value={form.business_name} onChange={handleChange} />
-          <Field label="Phone" name="phone" value={form.phone} onChange={handleChange} />
+          <Field
+            label="Phone *"
+            name="phone"
+            type="tel"
+            value={form.phone}
+            onChange={handleChange}
+            error={fieldErrors.phone}
+          />
           <Field label="City" name="city" value={form.city} onChange={handleChange} />
 
           {error && (
@@ -119,8 +153,6 @@ export default function SignupPage() {
           </button>
         </form>
 
-        {/* mb-4 added so this footer line has room to sit below the
-            scrollable area instead of touching the very bottom edge */}
         <div className="text-center text-[13px] text-text-tertiary mt-6 mb-4">
           Already have an account?{" "}
           <Link href="/owner/login/" className="text-brand font-medium hover:text-brand-dark">
@@ -132,10 +164,6 @@ export default function SignupPage() {
   );
 }
 
-/**
- * Small reusable field component so the form body above stays readable
- * instead of repeating the same label+input markup 7 times.
- */
 function Field({
   label,
   name,
@@ -145,6 +173,7 @@ function Field({
   showToggle = false,
   showPassword = false,
   onToggle,
+  error, // NEW
 }: {
   label: string;
   name: string;
@@ -154,6 +183,7 @@ function Field({
   showToggle?: boolean;
   showPassword?: boolean;
   onToggle?: () => void;
+  error?: string; // NEW
 }) {
   return (
     <div>
@@ -162,7 +192,7 @@ function Field({
       </label>
       <div className="relative">
         <input
-          className="field-input pr-12"
+          className={`field-input pr-12 ${error ? "border-danger" : ""}`}
           name={name}
           type={type}
           value={value}
@@ -182,6 +212,11 @@ function Field({
           </button>
         )}
       </div>
+
+      {/* NEW: inline error just below this specific field */}
+      {error && (
+        <p className="fade-in text-[12px] text-danger mt-1">{error}</p>
+      )}
     </div>
   );
 }
