@@ -127,8 +127,8 @@ origins = [
     "http://localhost:3000",   # Next.js
     "http://127.0.0.1:3000",
     "https://caretaker-shivering-dealt.ngrok-free.dev",
-    "https://ledgerpro-production-283b.up.railway.app",
-    "https://ledgerpro-frontend-production.up.railway.app",
+    "https://ledgerpro-backend-production-eb442c8f.up.railway.app",
+    "https://ledgerpro-frontend-production-3edae149.up.railway.app",
     "http://localhost",
     "capacitor://localhost",
 ]
@@ -136,6 +136,7 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.up\.railway\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
